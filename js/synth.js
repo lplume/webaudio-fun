@@ -16,73 +16,21 @@
 $(function () {
   var keyboard = qwertyHancock({id: 'keyboard', startNote: 'A4', octaves: 2});
 
-  /*keyboard.keyDown(function (note, frequency) {
-    //jQuery.event.trigger('frequency', [frequency] );
-    jQuery.event.trigger('gateOn');
-  });*/
-
-  keyboard.keyUp(function (_, _) { });
-
-  $("#attack-osc1").knob(/*{
-    'release' : function (v) { jQuery.event.trigger('setAttack', v / 100); }
-  }*/);
-
-  $("#oct-osc1").knob(/*{
-    'release' : function (v) { jQuery.event.trigger('setAttack', v / 100); }
-  }*/);
-
-  $("#release-osc1").knob(/*{
-    'release' : function (v) { jQuery.event.trigger('setRelease', v / 100); }
-  }*/);
-
-  $("#osc-osc1").knob(/*{
-    'release' : function (v) { jQuery.event.trigger('setOsc', v); }
-  }*/);
-
-  $("#gain-osc1").knob(/*{
-    'release' : function (v) { jQuery.event.trigger('setGain', v / 100); }
-  }*/);
-
-  $("#attack-osc2").knob(/*{
-    'release' : function (v) { jQuery.event.trigger('setAttack', v / 100); }
-  }*/);
-
-  $("#release-osc2").knob(/*{
-    'release' : function (v) { jQuery.event.trigger('setRelease', v / 100); }
-  }*/);
-
-  $("#osc-osc2").knob(/*{
-    'release' : function (v) { jQuery.event.trigger('setOsc', v); }
-  }*/);
-
-  $("#oct-osc2").knob(/*{
-    'release' : function (v) { jQuery.event.trigger('setAttack', v / 100); }
-  }*/);
-
-  $("#gain-osc2").knob(/*{
-    'release' : function (v) { jQuery.event.trigger('setGain', v / 100); }
-  }*/);
+  $('input').knob();
 
   var context = new AudioContext();
 
 
   var Voice = (function (context) {
-    function Voice(frequency, osc, gain, attack, release, num) {
-      this.frequency = frequency;
-      this.osc = osc;
-      this.gain = gain;
-      this.attack = attack;
-      this.release = release;
-      this.num = num
+    function Voice(options) {
+      this.options = options;
       this.voices = [];
     }
 
     Voice.prototype.start = function() {
-      this.vco = new VCO;
-      this.vco.setFrequency(this.frequency);
-      this.vco.setOsc(this.osc)
-      this.vca = new VCA;
-      this.envelope = new EnvelopeGenerator(this.gain, this.attack, this.release);
+      this.vco = new VCO(this.options.vco);
+      this.vca = new VCA(this.options.vca);
+      this.envelope = new EnvelopeGenerator(this.options.envelope, this.options.vca.gain);
       /* connections */
       this.vco.connect(this.vca);
       this.envelope.connect(this.vca.amplitude);
@@ -95,7 +43,7 @@ $(function () {
     Voice.prototype.stop = function() {
       this.voices.forEach(function(voice, _) {
         now = context.currentTime;
-        voice.vco.oscillator.stop(now + voice.env.releaseTime + 0.1);
+        voice.vco.oscillator.stop(now + voice.env.releaseTime + 0.2);
         voice.env.gateOff();
       });
     };
@@ -105,38 +53,39 @@ $(function () {
 
   active_voices = {};
 
-  keyboard.keyDown(function (note, baseFrequency) {
-    var osc = $("#osc-osc1").val();
-    var oct = Math.pow(2, $("#oct-osc1").val());
-    switch (oct) {
-        case 2: frequency = baseFrequency * 4; break;
-        case 4: frequency = baseFrequency * 2; break;
-        case 16: frequency = baseFrequency / 2; break;
-        case 32: frequency = baseFrequency / 4; break;
-        case 64: frequency = baseFrequency / 8; break;
-        default: frequency = baseFrequency; break;
-    }
-    var gain = $('#gain-osc1').val() / 100;
-    var attack = $('#attack-osc1').val() / 100;
-    var release = $('#release-osc1').val() / 100;
-    var voice1 = new Voice(frequency, osc, gain, attack, release, 1);
-    voice1.start();
-    var osc = $("#osc-osc2").val();
-    var oct = Math.pow(2, $("#oct-osc2").val());
-    switch (oct) {
-        case 2: frequency = baseFrequency * 4; break;
-        case 4: frequency = baseFrequency * 2; break;
-        case 16: frequency = baseFrequency / 2; break;
-        case 32: frequency = baseFrequency / 4; break;
-        case 64: frequency = baseFrequency / 8; break;
-        default: frequency = baseFrequency; break;
-    }
-    var gain = $('#gain-osc2').val() / 100;
-    var attack = $('#attack-osc2').val() / 100;
-    var release = $('#release-osc2').val() / 100;
-    var voice2 = new Voice(frequency, osc, gain, attack, release, 2);
-    voice2.start();
-    active_voices[note] = new Array(voice1, voice2);
+  keyboard.keyDown(function (note, frequency) {
+    var options_one = {
+      "vco": {
+        "osc": $("#osc-osc1").val(),
+        "octave": (Math.pow(2, $("#oct-osc1").val())),
+        "frequency": frequency
+      },
+      "vca": {
+        "gain": ($('#gain-osc1').val() / 100)
+      },
+      "envelope": {
+        "attack": ($('#attack-osc1').val() / 100),
+        "release": ($('#release-osc1').val() / 100)
+      } 
+    };
+    var options_two = {
+      "vco": {
+        "osc": $("#osc-osc2").val(),
+        "octave": (Math.pow(2, $("#oct-osc2").val())),
+        "frequency": frequency
+      },
+      "vca": {
+        "gain": ($('#gain-osc2').val() / 100)
+      },
+      "envelope": {
+        "attack": ($('#attack-osc2').val() / 100),
+        "release": ($('#release-osc2').val() / 100)
+      } 
+    };
+    var voice_one = new Voice(options_one);
+    var voice_two = new Voice(options_two);
+    voice_one.start(); voice_two.start();
+    active_voices[note] = new Array(voice_one, voice_two);
   });
 
   keyboard.keyUp(function (note, _) {
@@ -146,23 +95,26 @@ $(function () {
   });
 
   var VCO = (function(context) {
-    function VCO(){
+    function VCO(options){
       this.oscillator = context.createOscillator();
-      this.oscillator.type = 'sine';
-      this.setFrequency(440);
+      this.setOsc(options.osc);
+      this.octave = options.octave;
+      this.setFrequency(options.frequency, options.octave);
       this.oscillator.start(0);
 
       this.input = this.oscillator;
       this.output = this.oscillator;
-
-      var that = this;
-
-      /*$('#osc').on('setOsc', function (_, type) {
-        that.setOsc(type);
-      });*/
     };
 
-    VCO.prototype.setFrequency = function(frequency) {
+    VCO.prototype.setFrequency = function(baseFrequency, octave) {
+      switch (octave) {
+        case 2: frequency = baseFrequency * 4; break;
+        case 4: frequency = baseFrequency * 2; break;
+        case 16: frequency = baseFrequency / 2; break;
+        case 32: frequency = baseFrequency / 4; break;
+        case 64: frequency = baseFrequency / 8; break;
+        default: frequency = baseFrequency; break;
+      }
       this.oscillator.frequency.setValueAtTime(frequency, context.currentTime);
     };
 
@@ -189,19 +141,19 @@ $(function () {
   })(context);
 
   var VCA = (function(context) {
-    function VCA(gain) {
+    function VCA(options) {
       this.gain = context.createGain();
       this.gain.gain.value = 0;
       this.input = this.gain;
       this.output = this.gain;
       this.amplitude = this.gain.gain;
-      this.currentGain = gain;
+      this.currentGain = options.gain;
 
-      //var that = this;
-      /*$('#gain').on('release', function (_, gain) {
-        console.log('set gain');
+      var that = this;
+      $(document).on('setGain', function (_, gain) {
+        console.log('set gain catch')
         that.setGain(gain);
-      });*/
+      });
     };
 
     VCA.prototype.connect = function(node) {
@@ -214,31 +166,19 @@ $(function () {
 
     VCA.prototype.setGain = function(gain)
     {
-
       this.amplitude.value = gain;
+      this.gain.gain.value = gain;
       this.currentGain = gain;
-      console.log('set gain', this.currentGain);
     }
 
     return VCA;
   })(context);
 
   var EnvelopeGenerator = (function(context) {
-    function EnvelopeGenerator(currentGain, attack, release) {
-      this.attackTime = attack;
-      this.releaseTime = release;
+    function EnvelopeGenerator(options, currentGain) {
+      this.attackTime = options.attack;
+      this.releaseTime = options.release;
       this.currentGain = currentGain;
-
-      var that = this;
-      /*$(document).bind('gateOn', function (_) {
-        that.trigger();
-      });*/
-      /*$('#attack').bind('setAttack', function (_, value) {
-        that.setAttack(value);
-      });*/
-      /*$(document).bind('setRelease', function (_, value) {
-        that.releaseTime = value;
-      });*/
     };
 
     EnvelopeGenerator.prototype.trigger = function() {
@@ -268,13 +208,4 @@ $(function () {
 
     return EnvelopeGenerator;
   })(context);
-
-  /*var vco = new VCO;
-  var vca = new VCA;
-  var envelope = new EnvelopeGenerator;*/
-
-  /* Connections 
-  vco.connect(vca);
-  envelope.connect(vca.amplitude);
-  vca.connect(context.destination);*/
 });
